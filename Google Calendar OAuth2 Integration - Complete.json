@@ -1,0 +1,597 @@
+{
+  "name": "Google Calendar OAuth2 Integration - Complete",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cf02a62e-bdc8-418b-acae-c1141dd8d3a3",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "65c13870-9af7-4877-b1e8-dfc86ebf6564",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -2256,
+        0
+      ],
+      "webhookId": "f18a4875-19d2-4377-b30d-d7ec67114a1b"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst stateParam = Buffer.from(JSON.stringify(body), 'utf-8').toString('base64');\nreturn [{ json: { stateParam } }];"
+      },
+      "id": "fb28218b-3276-49cf-a5ca-7ea7f1acd173",
+      "name": "Prepare State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "authUrl",
+              "name": "authUrl",
+              "value": "=https://accounts.google.com/o/oauth2/v2/auth?client_id=472364302835-vmeuftcj843lpuo13c2e9hm2li45fad1.apps.googleusercontent.com&redirect_uri=https://mussabarshad383.app.n8n.cloud/webhook/8f3e9d2c-7b4a-4c5d-9e1f-2a8b3c4d5e6f&response_type=code&scope=https://www.googleapis.com/auth/calendar.events&access_type=offline&state={{ encodeURIComponent($json.stateParam) }}&prompt=consent",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b8034a8f-a2d7-4870-86ea-af17c8c48be6",
+      "name": "Build Auth URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -1744,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ authUrl: $json.authUrl }) }}",
+        "options": {}
+      },
+      "id": "a2302c2e-f131-419f-84a9-08549a24e7cf",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "path": "8f3e9d2c-7b4a-4c5d-9e1f-2a8b3c4d5e6f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cb0ff9a6-e355-4fc8-b430-e217e2918dbc",
+      "name": "OAuth Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -2256,
+        656
+      ],
+      "webhookId": "dcebc74b-4033-4935-b780-b31ed617b061"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $input.first().json.query || {};\nconst decoded = Buffer.from(query.state, 'base64').toString('utf-8');\nconst eventData = JSON.parse(decoded);\nreturn [{ json: { eventData, authCode: query.code } }];"
+      },
+      "id": "b98546fe-0da5-4033-9519-380e1c376d8d",
+      "name": "Decode State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "code",
+              "value": "={{$json.authCode}}"
+            },
+            {
+              "name": "client_id",
+              "value": "472364302835-vmeuftcj843lpuo13c2e9hm2li45fad1.apps.googleusercontent.com"
+            },
+            {
+              "name": "client_secret",
+              "value": "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"
+            },
+            {
+              "name": "redirect_uri",
+              "value": "https://mussabarshad383.app.n8n.cloud/webhook/8f3e9d2c-7b4a-4c5d-9e1f-2a8b3c4d5e6f"
+            },
+            {
+              "name": "grant_type",
+              "value": "authorization_code"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "188bba54-ae08-4f4c-a8d2-cec8d634c058",
+      "name": "Exchange Code for Tokens",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1744,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.lastRefreshToken = $json.refresh_token;\nstaticData.lastAccessToken = $json.access_token;\nreturn $json;"
+      },
+      "id": "4df2079c-f02c-4667-ad99-c7316333b18f",
+      "name": "Persist Refresh Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { summary: $(\"Decode State\").item.json.eventData.summary, description: $(\"Decode State\").item.json.eventData.description, start: { dateTime: $(\"Decode State\").item.json.eventData.start, timeZone: \"America/Los_Angeles\" }, end: { dateTime: $(\"Decode State\").item.json.eventData.end, timeZone: \"America/Los_Angeles\" }, attendees: ($(\"Decode State\").item.json.eventData.attendees || []).map(e => ({ email: e })) } }}",
+        "options": {}
+      },
+      "id": "093da1fc-2fc1-4964-b3c0-f5f37ad253b2",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1296,
+        656
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ String($json.error?.httpCode ?? $json.statusCode ?? \"\") === \"401\" || String($json.error?.message ?? \"\").includes(\"401\") }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1c2e17d3-e862-4f8e-abee-27db240ef3f8",
+      "name": "Token Expired?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1024,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "472364302835-vmeuftcj843lpuo13c2e9hm2li45fad1.apps.googleusercontent.com"
+            },
+            {
+              "name": "client_secret",
+              "value": "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"
+            },
+            {
+              "name": "grant_type",
+              "value": "refresh_token"
+            },
+            {
+              "name": "refresh_token",
+              "value": "={{$getWorkflowStaticData('global').lastRefreshToken}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "224b4e7a-7d9f-424e-977c-f2ff47ab89b6",
+      "name": "Refresh Access Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -736,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { summary: $(\"Decode State\").item.json.eventData.summary, description: $(\"Decode State\").item.json.eventData.description, start: { dateTime: $(\"Decode State\").item.json.eventData.start, timeZone: \"America/Los_Angeles\" }, end: { dateTime: $(\"Decode State\").item.json.eventData.end, timeZone: \"America/Los_Angeles\" }, attendees: ($(\"Decode State\").item.json.eventData.attendees || []).map(e => ({ email: e })) } }}",
+        "options": {}
+      },
+      "id": "761a271f-7efe-4913-a731-1deb889c5b61",
+      "name": "Retry Create Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -512,
+        656
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result",
+              "name": "result",
+              "value": "={{ { status: \"success\", message: \"Calendar event created successfully!\" } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3fcd4f2c-b920-4908-93a5-6e7c25a312be",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -176,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.result) }}",
+        "options": {}
+      },
+      "id": "90060788-4a9b-4a04-89fe-ea214e97649c",
+      "name": "Respond Callback Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error",
+              "name": "error",
+              "value": "={{ { status: \"error\", message: \"Failed to create calendar event\", details: $json } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0056af43-58e2-441e-9600-87e88a16027b",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -176,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.error) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "930b7421-8687-426f-9836-dbe9891ef6d4",
+      "name": "Respond Callback Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        896
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare State": {
+      "main": [
+        [
+          {
+            "node": "Build Auth URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Auth URL": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OAuth Callback": {
+      "main": [
+        [
+          {
+            "node": "Decode State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode State": {
+      "main": [
+        [
+          {
+            "node": "Exchange Code for Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exchange Code for Tokens": {
+      "main": [
+        [
+          {
+            "node": "Persist Refresh Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Refresh Token": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Token Expired?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token Expired?": {
+      "main": [
+        [
+          {
+            "node": "Refresh Access Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Access Token": {
+      "main": [
+        [
+          {
+            "node": "Retry Create Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Create Event": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Callback Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Callback Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9f5ab107-b0b0-4e9a-86cb-5cec87097029",
+  "meta": {
+    "instanceId": "06183473d5dcb02f044337c5028f1d897685c8a329de23a650e2767792a26c11"
+  },
+  "nodeGroups": [
+    {
+      "id": "a61b45be-4758-42fc-bea2-21e6f6fcf1f2",
+      "name": "Generate consent link",
+      "nodeIds": [
+        "fb28218b-3276-49cf-a5ca-7ea7f1acd173",
+        "b8034a8f-a2d7-4870-86ea-af17c8c48be6",
+        "a2302c2e-f131-419f-84a9-08549a24e7cf"
+      ],
+      "description": "Encodes the posted event into state and returns the Google consent URL to the caller"
+    },
+    {
+      "id": "ec325607-dbd1-4008-969e-d407d3c10a60",
+      "name": "Obtain tokens",
+      "nodeIds": [
+        "b98546fe-0da5-4033-9519-380e1c376d8d",
+        "188bba54-ae08-4f4c-a8d2-cec8d634c058",
+        "4df2079c-f02c-4667-ad99-c7316333b18f",
+        "093da1fc-2fc1-4964-b3c0-f5f37ad253b2"
+      ],
+      "description": "Reads the redirect, trades the code for tokens, stores the refresh token and creates the calendar event"
+    },
+    {
+      "id": "03cd8f78-0be9-451b-925a-c7edd028da37",
+      "name": "Refresh and retry",
+      "nodeIds": [
+        "224b4e7a-7d9f-424e-977c-f2ff47ab89b6",
+        "761a271f-7efe-4913-a731-1deb889c5b61"
+      ],
+      "description": "After a 401, gets a new access token from the stored refresh token and retries the event once"
+    },
+    {
+      "id": "fe5c74f5-c465-4112-b8b0-fda8973c063c",
+      "name": "Report failure",
+      "nodeIds": [
+        "0056af43-58e2-441e-9600-87e88a16027b",
+        "930b7421-8687-426f-9836-dbe9891ef6d4"
+      ],
+      "description": "Returns the error details to the caller when the event cannot be created"
+    },
+    {
+      "id": "490035b5-9943-4fba-bbac-6727a628c867",
+      "name": "Confirm success",
+      "nodeIds": [
+        "3fcd4f2c-b920-4908-93a5-6e7c25a312be",
+        "90060788-4a9b-4a04-89fe-ea214e97649c"
+      ],
+      "description": "Tells the browser the calendar event was created"
+    }
+  ],
+  "id": "ycA7IM0pErSGVrBi",
+  "tags": []
+}
